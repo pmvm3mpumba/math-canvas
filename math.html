@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mon Projet Canvas</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background-color: #ffffff;
+            color: #333333;
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+        }
+        .canvas-container {
+            background-color: #ffffff;
+            padding: 10px;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        } 
+        canvas {
+            display: block;
+            background-color: #ffffff;
+            border: 1px solid #cccccc;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body> 
+    <div class="canvas-container">
+        <canvas id="monCanvas" width="800" height="800"></canvas>
+    </div>
+
+    <script>
+        
+        const canvas = document.getElementById('monCanvas');
+        const ctx = canvas.getContext('2d'); 
+    
+        class Point {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+            }
+        }
+
+        class DemiDroite {
+            constructor(pointMin , pointMax, radiant = 1) {
+                this.min = pointMin;
+                this.max = pointMax;
+                this.radiant = radiant;
+            }
+        }
+
+        function getRayons(cote) {
+            return (cote * Math.sqrt(2)) / 2;
+        }
+        
+        function getSquartPoints(rayon, origine = new Point(0, 0)) {
+            console.log("Origine", origine)
+            return [
+                new Point(origine.x + rayon, 0 + origine.y),
+                new Point(0 + origine.x, origine.y - rayon),
+                new Point(origine.x - rayon, 0 + origine.y),
+                new Point(0 + origine.x, origine.y + rayon)
+            ]
+        }
+
+        function getcinqDroites(l_demi_drote, longeur_cote, origine = new Point(0, 0)) {
+            if(l_demi_drote > longeur_cote) {
+                l_demi_drote = longeur_cote
+            }
+            
+            r = getRayons(longeur_cote)
+
+            t = l_demi_drote * Math.cos(Math.PI / 4)
+
+            k = ( r - t ) / 2
+
+            let demiDroiteA = new DemiDroite ( new Point(origine.x + k + t, origine.y + k), new Point(origine.x + k , origine.y + t + k), 1)
+            let demiDroiteB = new DemiDroite ( new Point(origine.x + k + t, origine.y - k), new Point( origine.x + k , origine.y - t - k ), 2)
+            let demiDroiteC = new DemiDroite ( new Point(origine.x -k, origine.y - k - t), new Point(origine.x - t - k, origine.y - k ), 3)
+            let demiDroiteD = new DemiDroite ( new Point(origine.x - k - t, origine.y + k), new Point(origine.x - k , origine.y + t + k), 4)
+            let demiDroiteE = new DemiDroite ( new Point(origine.x + l_demi_drote / 2, 0 + origine.y ), new Point(origine.x - l_demi_drote / 2 , 0 +  origine.y ), 0)
+            let _minX = origine.x - k - t
+            let _maxX = origine.x + k + t
+            return { 
+                    "droites" :[
+                        demiDroiteA ,demiDroiteB,
+                        demiDroiteC,demiDroiteD,
+                        demiDroiteE
+                    ],
+                    "bordes" :{"min" : _minX, "max" : _maxX, "ecart" : k}
+                }
+        }
+
+        const origine = new Point(400, 400);
+        // origine du repere
+        const cote_lenght = 500; 
+        // const l_demi_drote = 300;
+        const l_demi_drote = 300;
+        let rayon = getRayons(cote_lenght);
+        const xMin = origine.x - rayon;
+        const xMax = origine.x + rayon;
+        let squartPoints = getSquartPoints(rayon, origine);
+        let dataDroiteInfos = getcinqDroites(l_demi_drote, cote_lenght, origine); 
+   
+        // Trace les 4 points du carre pour la referance
+        ctx.beginPath()
+        ctx.moveTo(squartPoints[3].x, squartPoints[3].y) 
+        ctx.stroke()
+        ctx.closePath()
+
+        // Tracer les points de border des demis droite
+       
+        function dessinerCinqDroite(listDemiDrote) {
+            for(let n = 0; n < listDemiDrote.length; n++) {
+                let droite = listDemiDrote[n]
+                ctx.beginPath()
+                ctx.strokeStyle = 'red'
+                //ctx.arc(droite.min.x, droite.min.y, 2, 0, Math.PI * 2)
+                ctx.moveTo(droite.min.x, droite.min.y)
+                ctx.lineTo(droite.max.x, droite.max.y)
+                ctx.closePath()
+                // ctx.beginPath()
+                // ctx.arc(droite.max.x, droite.max.y, 2, 0, Math.PI * 2)
+                // ctx.closePath()
+                ctx.stroke() 
+            }
+        }
+
+        dessinerCinqDroite(dataDroiteInfos.droites)
+
+        function generatePointsGroups(dataDroiteInfos, origine) {
+            let groupA = [] // radiant 1
+            let groupB = [] // radiant 2
+
+            let groupC = [] // radiant 3
+            let groupD = [] // radiant 4
+
+            let groupE = [] // radiant 4
+
+            let borneMin = dataDroiteInfos.bordes.min
+            let borneMax = dataDroiteInfos.bordes.max
+            let ecart = dataDroiteInfos.bordes.ecart
+            let pas_iteration = 10
+
+            if(borneMin >= borneMax) 
+                return 
+
+            for (let x = borneMin; x <= borneMax; x += pas_iteration) {
+                for(let droite of dataDroiteInfos.droites ) { 
+
+                    if(droite.radiant == 0 || droite.radiant == 1 || droite.radiant == 2) continue
+
+                    let m = (droite.min.y - droite.max.y) / (droite.min.x - droite.max.x)
+                    let minX = Math.min(droite.min.x, droite.max.x);
+                    let maxX = Math.max(droite.min.x, droite.max.x);
+
+                    if(!(x >= minX && x <= maxX)) {
+                        continue
+                    }
+ 
+                    // Equation : y - mx + mx1-y1 = 0
+                    // <=> y = mx + y1 -mx1  
+                    ctx.strokeStyle = 'blue'
+                    ctx.beginPath()
+                    let y = m * x + droite.min.y - m * droite.min.x  
+                    ctx.arc(x, y, 1, 0, Math.PI * 2)
+                    ctx.closePath()
+                    ctx.stroke()   
+
+                    if(droite.radiant == 3) 
+                      groupC.push(new Point(x, y)) 
+                    else 
+                        groupD.push(new Point(x, y))
+                } 
+            }
+            
+            for (let x = origine.x + ecart; x <= borneMax; x += pas_iteration) {
+                for(let droite of dataDroiteInfos.droites ) { 
+
+                    if(droite.radiant == 0 || droite.radiant == 3 || droite.radiant == 4) continue
+
+                    let m = (droite.min.y - droite.max.y) / (droite.min.x - droite.max.x)
+                    let minX = Math.min(droite.min.x, droite.max.x);
+                    let maxX = Math.max(droite.min.x, droite.max.x);
+
+                    if(!(x >= minX && x <= maxX)) {
+                        continue
+                    } 
+                    ctx.strokeStyle = 'blue'
+                    ctx.beginPath()
+                    let y = m * x + droite.min.y - m * droite.min.x  
+                    ctx.arc(x, y, 1, 0, Math.PI * 2)
+                    ctx.closePath()
+                    ctx.stroke()   
+
+                    if(droite.radiant == 1) 
+                      groupA.push(new Point(x, y)) 
+                    else 
+                        groupB.push(new Point(x, y))
+                } 
+            }
+            
+            let interval = pas_iteration * Math.sqrt(2)
+            let droiteHorizontal = dataDroiteInfos.droites.find(droite => droite.radiant === 0);
+
+            if(droiteHorizontal) {
+                for(let m = droiteHorizontal.max.x; m <= droiteHorizontal.min.x; m+=interval) {
+                    ctx.strokeStyle = 'blue'
+                    ctx.beginPath() 
+                    ctx.arc(m, origine.y, 1, 0, Math.PI * 2)
+                    ctx.closePath()
+                    ctx.stroke()  
+                    groupE.push(new Point(m, origine.y)) 
+                }
+            }
+
+            return {
+                "g_a" : groupA,
+                "g_b" : groupB,
+                "g_c" : groupC,
+                "g_d" : groupD,
+                "g_e" : groupE
+            }
+        }
+
+        let result = generatePointsGroups(dataDroiteInfos, origine)
+
+        function dessiner_droites(grouppoints) { 
+
+            let max = grouppoints.g_e.length - 1
+
+            for(let m = 0 ; m <= max; m++) {  
+                let pointE = grouppoints.g_e[max - m]
+                let pointA = grouppoints.g_a[m]
+                let pointB = grouppoints.g_b[m]
+
+                ctx.beginPath()
+                ctx.moveTo(pointE.x, pointE.y)
+                ctx.lineTo(pointA.x, pointA.y)
+                ctx.moveTo(pointE.x, pointE.y)
+                ctx.lineTo(pointB.x, pointB.y)
+                ctx.stroke()
+                ctx.closePath() 
+            }
+
+            // -------------------------------------- 
+
+            ctx.save();  
+            ctx.strokeStyle = 'blue';  
+
+            for(let m = 0 ; m <= max; m++) {   
+                let pointA = grouppoints.g_a[m];
+                let pointB = grouppoints.g_b[max - m];
+
+                ctx.beginPath(); 
+                ctx.moveTo(pointA.x, pointA.y); 
+                ctx.lineTo(pointB.x, pointB.y);
+                ctx.stroke();
+                ctx.closePath(); 
+            }
+ 
+            for(let m = 0 ; m <= max; m++) {   
+                let pointC = grouppoints.g_c[m];
+                let pointD = grouppoints.g_d[max - m];
+
+                ctx.beginPath(); 
+                ctx.moveTo(pointC.x, pointC.y); 
+                ctx.lineTo(pointD.x, pointD.y);
+                ctx.stroke();
+                ctx.closePath(); 
+            }
+
+            ctx.restore();
+
+            // -------------------------------------- 
+
+            for(let m = 0 ; m <= max; m++) {  
+                let pointE = grouppoints.g_e[m]
+                let groupC = grouppoints.g_c[max -m]
+                let groupD = grouppoints.g_d[max -m]
+
+                ctx.beginPath()
+                ctx.moveTo(pointE.x, pointE.y)
+                ctx.lineTo(groupC.x, groupC.y)
+                ctx.moveTo(pointE.x, pointE.y)
+                ctx.lineTo(groupD.x, groupD.y)
+                ctx.stroke()
+                ctx.closePath() 
+            }
+ 
+        }
+
+        dessiner_droites(result)
+
+    </script> 
+</body>
+</html>
